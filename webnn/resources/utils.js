@@ -13,6 +13,15 @@ const TypedArrayDict = {
   int64: BigInt64Array,
 };
 
+const kAllSupportedMLContextOptions = {
+  cpu: {
+    deviceType: 'cpu',
+  },
+  gpu: {
+    deviceType: 'gpu',
+  }
+};
+
 // The maximum index to validate for the output's expected value.
 const kMaximumIndexToValidate = 1000;
 
@@ -871,13 +880,10 @@ const run = async (operationName, context, builder, resources, buildFunc) => {
  * Run WebNN operation tests.
  * @param {(String[]|String)} operationName - An operation name array or an operation name
  * @param {Function} buildFunc - A build function for an operation
- * @param {String} deviceType - The execution device type for this test
  */
-const testWebNNOperation = (operationName, buildFunc, deviceType = 'cpu') => {
-  test(() => assert_not_equals(navigator.ml, undefined, "ml property is defined on navigator"));
-  if (navigator.ml === undefined) {
-    return;
-  }
+const testWebNNOperation = (operationName, buildFunc) => {
+  const contextOptionsDesc = location.search.substring(1);
+  const contextOptions = kAllSupportedMLContextOptions[contextOptionsDesc];
   let operationNameArray;
   if (typeof operationName === 'string') {
     operationNameArray = [operationName];
@@ -890,15 +896,42 @@ const testWebNNOperation = (operationName, buildFunc, deviceType = 'cpu') => {
   operationNameArray.forEach((subOperationName) => {
     const tests = loadTests(subOperationName);
     promise_setup(async () => {
-      context = await navigator.ml.createContext({deviceType});
+      let supported = false;
+      try {
+        context = await navigator.ml.createContext(contextOptions);
+        supported = true;
+      } catch (e) {
+      }
+      assert_implements(
+          supported,
+          `Unsupported to create context by ${contextOptionsDesc} options`);
       builder = new MLGraphBuilder(context);
     });
     for (const subTest of tests) {
       promise_test(async () => {
         await run(subOperationName, context, builder, subTest, buildFunc);
-      }, `${subTest.name}`);
+      }, `${subTest.name} / ${contextOptionsDesc}`);
     }
   });
+};
+
+/**
+ * Run WebNN conformance tests by specified operation.
+ * @param {(String[]|String)} operationName - An operation name array or an
+ *     operation name
+ * @param {Function} buildFunc - A build function for an operation
+ */
+const runWebNNConformanceTests = (operationName, buildFunc) => {
+  // Link to https://github.com/web-platform-tests/wpt/pull/44883
+  // Check navigator.ml is defined before trying to run WebNN tests
+  if (navigator.ml) {
+    testWebNNOperation(operationName, buildFunc);
+  } else {
+    // Show indication to users why the test failed
+    test(
+        () => assert_not_equals(
+            navigator.ml, undefined, 'ml property is defined on navigator'));
+  }
 };
 
 // ref: http://stackoverflow.com/questions/32633585/how-do-you-convert-to-half-floats-in-javascript
@@ -970,13 +1003,22 @@ const createBuffer = (context, bufferSize) => {
 /**
  * WebNN destroy buffer twice test.
  * @param {String} testName - The name of the test operation.
- * @param {String} deviceType - The execution device type for this test.
  */
-const testDestroyWebNNBuffer = (testName, deviceType = 'cpu') => {
+const testDestroyWebNNBuffer = (testName) => {
+  const contextOptionsDesc = location.search.substring(1);
+  const contextOptions = kAllSupportedMLContextOptions[contextOptionsDesc];
   let context;
   let buffer;
   promise_setup(async () => {
-    context = await navigator.ml.createContext({deviceType});
+    let supported = false;
+    try {
+      context = await navigator.ml.createContext(contextOptions);
+      supported = true;
+    } catch (e) {
+    }
+    assert_implements(
+        supported,
+        `Unsupported to create context by ${contextOptionsDesc} options`);
     buffer = createBuffer(context, 4);
   });
   promise_test(async () => {
@@ -986,23 +1028,33 @@ const testDestroyWebNNBuffer = (testName, deviceType = 'cpu') => {
     }
     buffer.destroy();
     buffer.destroy();
-  }, `${testName}`);
+  }, `${testName} / ${contextOptionsDesc}`);
 };
 
 /**
  * WebNN create buffer test.
  * @param {String} testName - The name of the test operation.
  * @param {Number} bufferSize - Size of the buffer to create, in bytes.
- * @param {String} deviceType - The execution device type for this test.
  */
-const testCreateWebNNBuffer = (testName, bufferSize, deviceType = 'cpu') => {
+const testCreateWebNNBuffer = (testName, bufferSize) => {
+  const contextOptionsDesc = location.search.substring(1);
+  const contextOptions = kAllSupportedMLContextOptions[contextOptionsDesc];
   let context;
+
   promise_setup(async () => {
-      context = await navigator.ml.createContext({deviceType});
+    let supported = false;
+    try {
+      context = await navigator.ml.createContext(contextOptions);
+      supported = true;
+    } catch (e) {
+    }
+    assert_implements(
+        supported,
+        `Unsupported to create context by ${contextOptionsDesc} options`);
   });
   promise_test(async () => {
     createBuffer(context, bufferSize);
-  }, `${testName} / ${bufferSize}`);
+  }, `${testName} / ${bufferSize} / ${contextOptionsDesc}`);
 };
 
 /**
@@ -1021,12 +1073,21 @@ const assert_buffer_data_equals = async (ml_context, ml_buffer, expected) => {
 /**
  * WebNN write buffer operation test.
  * @param {String} testName - The name of the test operation.
- * @param {String} deviceType - The execution device type for this test.
  */
-const testWriteWebNNBuffer = (testName, deviceType = 'cpu') => {
+const testWriteWebNNBuffer = (testName) => {
+  const contextOptionsDesc = location.search.substring(1);
+  const contextOptions = kAllSupportedMLContextOptions[contextOptionsDesc];
   let ml_context;
   promise_setup(async () => {
-    ml_context = await navigator.ml.createContext({deviceType});
+    let supported = false;
+    try {
+      context = await navigator.ml.createContext(contextOptions);
+      supported = true;
+    } catch (e) {
+    }
+    assert_implements(
+        supported,
+        `Unsupported to create context by ${contextOptionsDesc} options`);
   });
 
   promise_test(async () => {
@@ -1075,7 +1136,7 @@ const testWriteWebNNBuffer = (testName, deviceType = 'cpu') => {
         TypeError,
         () => ml_context.writeBuffer(
             ml_buffer, Uint8Array.from([0xEE, 0xEE, 0xEE, 0xEE, 0xEE])));
-  }, `${testName} / error`);
+  }, `${testName} / error / ${contextOptionsDesc}`);
 
   promise_test(async () => {
     let ml_buffer = createBuffer(ml_context, 4);
@@ -1092,7 +1153,7 @@ const testWriteWebNNBuffer = (testName, deviceType = 'cpu') => {
         'InvalidStateError',
         () =>
             ml_context.writeBuffer(ml_buffer, new Uint8Array(ml_buffer.size)));
-  }, `${testName} / destroy`);
+  }, `${testName} / destroy / ${contextOptionsDesc}`);
 
   promise_test(async () => {
     let ml_buffer = createBuffer(ml_context, 4);
@@ -1107,7 +1168,7 @@ const testWriteWebNNBuffer = (testName, deviceType = 'cpu') => {
     assert_true(array_buffer.detached, 'array buffer should be detached.');
 
     ml_context.writeBuffer(ml_buffer, array_buffer);
-  }, `${testName} / detached`);
+  }, `${testName} / detached / ${contextOptionsDesc}`);
 
   promise_test(async () => {
     let ml_buffer = createBuffer(ml_context, 4);
@@ -1117,7 +1178,7 @@ const testWriteWebNNBuffer = (testName, deviceType = 'cpu') => {
       return;
     }
 
-    let another_ml_context = await navigator.ml.createContext({deviceType});
+    let another_ml_context = await navigator.ml.createContext(contextOptions);
     let another_ml_buffer = createBuffer(another_ml_context, ml_buffer.size);
 
     let input_data = new Uint8Array(ml_buffer.size).fill(0xAA);
@@ -1125,18 +1186,27 @@ const testWriteWebNNBuffer = (testName, deviceType = 'cpu') => {
         TypeError, () => ml_context.writeBuffer(another_ml_buffer, input_data));
     assert_throws_js(
         TypeError, () => another_ml_context.writeBuffer(ml_buffer, input_data));
-  }, `${testName} / context_mismatch`);
+  }, `${testName} / context_mismatch / ${contextOptionsDesc}`);
 };
 
 /**
  * WebNN read buffer operation test.
  * @param {String} testName - The name of the test operation.
- * @param {String} deviceType - The execution device type for this test.
  */
-const testReadWebNNBuffer = (testName, deviceType = 'cpu') => {
+const testReadWebNNBuffer = (testName) => {
+  const contextOptionsDesc = location.search.substring(1);
+  const contextOptions = kAllSupportedMLContextOptions[contextOptionsDesc];
   let ml_context;
   promise_setup(async () => {
-    ml_context = await navigator.ml.createContext({deviceType});
+    let supported = false;
+    try {
+      context = await navigator.ml.createContext(contextOptions);
+      supported = true;
+    } catch (e) {
+    }
+    assert_implements(
+        supported,
+        `Unsupported to create context by ${contextOptionsDesc} options`);
   });
 
   promise_test(async t => {
@@ -1152,7 +1222,7 @@ const testReadWebNNBuffer = (testName, deviceType = 'cpu') => {
 
     await promise_rejects_dom(
         t, 'InvalidStateError', ml_context.readBuffer(ml_buffer));
-  }, `${testName} / destroy`);
+  }, `${testName} / destroy / ${contextOptionsDesc}`);
 
   promise_test(async () => {
     let ml_buffer = createBuffer(ml_context, 4);
@@ -1170,7 +1240,7 @@ const testReadWebNNBuffer = (testName, deviceType = 'cpu') => {
     await assert_buffer_data_equals(
         ml_context, ml_buffer, Uint32Array.from([0xBBBBBBBB]));
     ;
-  }, `${testName} / full_size`);
+  }, `${testName} / full_size / ${contextOptionsDesc}`);
 
   promise_test(async () => {
     let ml_buffer = createBuffer(ml_context, 4);
@@ -1190,7 +1260,7 @@ const testReadWebNNBuffer = (testName, deviceType = 'cpu') => {
         /*srcOffset=*/ 2);
     await assert_buffer_data_equals(
         ml_context, ml_buffer, Uint8Array.from([0xBB, 0xBB, 0xAA, 0xAA]));
-  }, `${testName} / src_offset_only`);
+  }, `${testName} / src_offset_only / ${contextOptionsDesc}`);
 
   promise_test(async () => {
     let ml_buffer = createBuffer(ml_context, 4);
@@ -1209,7 +1279,7 @@ const testReadWebNNBuffer = (testName, deviceType = 'cpu') => {
         ml_buffer, Uint32Array.from([0xBBBBBBBB]), /*srcOffset=*/ 1);
     await assert_buffer_data_equals(
         ml_context, ml_buffer, Uint8Array.from(input_data));
-  }, `${testName} / zero_write`);
+  }, `${testName} / zero_write / ${contextOptionsDesc}`);
 
   promise_test(async () => {
     let ml_buffer = createBuffer(ml_context, 4);
@@ -1229,7 +1299,7 @@ const testReadWebNNBuffer = (testName, deviceType = 'cpu') => {
         /*srcOffset=*/ 2, /*srcSize=*/ 1);
     await assert_buffer_data_equals(
         ml_context, ml_buffer, Uint8Array.from([0xCC, 0xAA, 0xAA, 0xAA]));
-  }, `${testName} / src_offset_and_size`);
+  }, `${testName} / src_offset_and_size / ${contextOptionsDesc}`);
 
   promise_test(async () => {
     let ml_buffer = createBuffer(ml_context, 4);
@@ -1249,7 +1319,7 @@ const testReadWebNNBuffer = (testName, deviceType = 'cpu') => {
         /*srcOffset=*/ 1);
     await assert_buffer_data_equals(
         ml_context, ml_buffer, Uint8Array.from([0xEE, 0xEE, 0xEE, 0xEE]));
-  }, `${testName} / larger_src_data`);
+  }, `${testName} / larger_src_data / ${contextOptionsDesc}`);
 
   promise_test(async () => {
     let ml_buffer = createBuffer(ml_context, 4);
@@ -1267,7 +1337,7 @@ const testReadWebNNBuffer = (testName, deviceType = 'cpu') => {
         /*srcSize=*/ input_data.length);
     await assert_buffer_data_equals(
         ml_context, ml_buffer, Uint8Array.from(input_data));
-  }, `${testName} / no_src_offset`);
+  }, `${testName} / no_src_offset / ${contextOptionsDesc}`);
 
   promise_test(async t => {
     let ml_buffer = createBuffer(ml_context, 4);
@@ -1277,12 +1347,12 @@ const testReadWebNNBuffer = (testName, deviceType = 'cpu') => {
       return;
     }
 
-    let another_ml_context = await navigator.ml.createContext({deviceType});
+    let another_ml_context = await navigator.ml.createContext(contextOptions);
     let another_ml_buffer = createBuffer(another_ml_context, ml_buffer.size);
 
     await promise_rejects_js(
         t, TypeError, ml_context.readBuffer(another_ml_buffer));
     await promise_rejects_js(
         t, TypeError, another_ml_context.readBuffer(ml_buffer));
-  }, `${testName} / context_mismatch`);
+  }, `${testName} / context_mismatch / ${contextOptionsDesc}`);
 };
