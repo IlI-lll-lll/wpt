@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<head>
+<meta charset="utf-8">
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<script src="./resources/compression-dictionary-util.js"></script>
+</head>
+<body>
+<script>
+
+compression_dictionary_promise_test(async (t) => {
+  const dict = await (await fetch(kRegisterDictionaryPath)).text();
+  // Wait until `available-dictionary` header is available.
+  assert_equals(
+      await wait_until_available_dictionary_header(t, {}),
+      kDefaultDictionaryHashBase64);
+  // Clear site data.
+  assert_equals(await clear_site_data(/*directive=*/'cache'), 'OK');
+  // Check if `available-dictionary` header is not available.
+  assert_equals(
+      await wait_until_available_dictionary_header(t, {max_retry: 0}),
+      '"available-dictionary" header is not available');
+}, 'Clear-Site-Data; "cache" must unregister compression dictionary');
+
+compression_dictionary_promise_test(async (t) => {
+  const dict = await (await fetch(kRegisterDictionaryPath)).text();
+  // Wait until `available-dictionary` header is available.
+  assert_equals(
+      await wait_until_available_dictionary_header(t, {}),
+      kDefaultDictionaryHashBase64);
+  // Clear site data.
+  assert_equals(await clear_site_data(/*directive=*/'cookies'), 'OK');
+  // Check if `available-dictionary` header is not available.
+  assert_equals(
+      await wait_until_available_dictionary_header(t, {max_retry: 0}),
+      '"available-dictionary" header is not available');
+}, 'Clear-Site-Data; "cookies" must unregister compression dictionary');
+
+compression_dictionary_promise_test(async (t) => {
+  const dict = await (await fetch(kRegisterDictionaryPath)).text();
+  // Wait until `available-dictionary` header is available.
+  assert_equals(
+      await wait_until_available_dictionary_header(t, {}),
+      kDefaultDictionaryHashBase64);
+  // Clear site data.
+  assert_equals(await clear_site_data(/*directive=*/'storage'), 'OK');
+  // Check if `available-dictionary` header is not available.
+  assert_equals(
+      await wait_until_available_dictionary_header(t, {max_retry: 0}),
+      kDefaultDictionaryHashBase64);
+}, 'Clear-Site-Data; "storage" must not unregister compression dictionary');
+
+</script>
+</body>
