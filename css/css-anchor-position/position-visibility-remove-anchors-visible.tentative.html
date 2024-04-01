@@ -1,8 +1,11 @@
 <!DOCTYPE html>
+<html class=reftest-wait>
 <meta charset="utf-8">
 <title>CSS Anchor Positioning Test: position-visibility: anchors-visible</title>
 <link rel="help" href="https://github.com/w3c/csswg-drafts/issues/7758">
-<link rel="match" href="position-visibility-anchors-visible-ref.html">
+<link rel="match" href="position-visibility-remove-anchors-visible-ref.html">
+<script src="/common/reftest-wait.js"></script>
+<script src="/common/rendering-utils.js"></script>
 <style>
   #scroll-container {
     overflow: hidden scroll;
@@ -27,7 +30,7 @@
     inset-area: block-end;
     width: 100px;
     height: 100px;
-    background: red;
+    background: green;
     top: 0;
     left: 0;
   }
@@ -35,13 +38,18 @@
 
 <div id="scroll-container">
   <div id="contents-container">
-    <!-- #target1 should not be visible because anchor is scrolled to not be visible. -->
-    <div class="anchor" style="anchor-name: --a1;">anchor1</div>
-    <div id="target1" class="target" style="position-anchor: --a1;">target1</div>
+    <!-- #target should not be visible (initially) because anchor is scrolled to not be visible. -->
+    <div class="anchor" style="anchor-name: --a1;">anchor</div>
+    <div id="target" class="target" style="position-anchor: --a1;">target</div>
   </div>
 </div>
 
 <script>
   const scroller = document.getElementById('scroll-container');
   scroller.scrollTop = 100;
+
+  waitForAtLeastOneFrame().then(() => {
+    target.style.positionVisibility = 'initial';
+    takeScreenshot();
+  });
 </script>

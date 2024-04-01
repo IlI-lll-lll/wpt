@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>CSS Anchor Positioning Test: position-visibility: anchors-visible</title>
+<link rel="help" href="https://github.com/w3c/csswg-drafts/issues/7758">
+<link rel="match" href="position-visibility-anchors-visible-non-intervening-container-ref.html">
+<style>
+  #non-intervening-scroll-container {
+    overflow: hidden;
+    width: 200px;
+    height: 200px;
+    position: relative;
+  }
+
+  #scroll-container {
+    overflow: hidden scroll;
+    width: 400px;
+    height: 100px;
+  }
+
+  #contents-container {
+    height: 400px;
+  }
+
+  .anchor {
+    width: 100px;
+    height: 100px;
+    background: orange;
+    display: inline-block;
+  }
+
+  .target {
+    position: absolute;
+    position-visibility: anchors-visible;
+    inset-area: right;
+    width: 100px;
+    height: 100px;
+    background: green;
+    top: 0;
+    left: 0;
+  }
+</style>
+
+<div id="non-intervening-scroll-container">
+  <div id="containing-block" style="position: relative;">
+    <div id="scroll-container">
+      <div id="contents-container">
+        <!-- The anchor is not visible to the screen, but it is visible in the -->
+        <!-- containing block of anchor1 and target1, so the target should not -->
+        <!-- be hidden due to position-visibility: anchors-visible. -->
+        <div class="anchor" style="anchor-name: --a1;">anchor1</div>
+        <div id="target1" class="target" style="position-anchor: --a1;">target1</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const non_intervening_scroller = document.getElementById('non-intervening-scroll-container');
+  non_intervening_scroller.scrollLeft = 100;
+</script>

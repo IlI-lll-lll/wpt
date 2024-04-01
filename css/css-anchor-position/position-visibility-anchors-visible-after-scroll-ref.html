@@ -4,28 +4,29 @@
   #scroll-container {
     overflow: hidden scroll;
     width: 400px;
-    height: 100px;
+    height: 110px;
   }
 
   #contents-container {
     height: 400px;
   }
 
-  .anchor {
+  .target {
     width: 100px;
     height: 100px;
-    background: orange;
+    background: green;
+    border-top: 100px solid orange;
     display: inline-block;
   }
 </style>
 
 <div id="scroll-container">
   <div id="contents-container">
-    <div class="anchor">anchor1</div>
+    <div class="target">target</div>
   </div>
 </div>
 
 <script>
   const scroller = document.getElementById('scroll-container');
-  scroller.scrollTop = 100;
+  scroller.scrollTop = 90;
 </script>
